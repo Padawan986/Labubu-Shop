@@ -1,245 +1,229 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Cloudflare Verification</title>
-<style>
-  :root{
-    --bg:#f4f4f5;
-    --card:#fff;
-    --accent:#1f6feb;
-    --muted:#666;
-  }
-  html,body{height:100%;margin:0;font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial;}
-  body {
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    background: linear-gradient(180deg,#eef2ff 0%, var(--bg) 100%);
-  }
-
-  .container{
-    width:min(880px,94%);
-    display:flex;
-    gap:2rem;
-    align-items:center;
-    padding:2rem;
-    background:var(--card);
-    border-radius:16px;
-    box-shadow: 0 8px 30px rgba(10,20,50,0.08);
-  }
-
-  .left {
-    flex:1;
-  }
-
-  .logo {
-    display:flex;
-    gap:.75rem;
-    align-items:center;
-    margin-bottom:0.75rem;
-  }
-  .logo .shield{
-    width:48px;height:48px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#6c63ff);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;
-    box-shadow:0 6px 18px rgba(31,111,235,0.18);
-  }
-  h1{margin:.2rem 0 0;font-size:1.125rem;}
-  p.lead{color:var(--muted);margin:0.5rem 0 1.25rem;}
-
-  .challenge {
-    background:#fbfdff;
-    border-radius:10px;
-    padding:1rem;
-    border:1px solid rgba(10,20,50,0.04);
-  }
-
-  .spinner {
-    width:56px;height:56px;border-radius:10px;background:linear-gradient(135deg,#fff,#f2f8ff);display:flex;align-items:center;justify-content:center;margin-right:1rem;
-    box-shadow: 0 8px 20px rgba(20,40,80,0.06);
-  }
-
-  .row {display:flex;align-items:center;}
-  button.verify {
-    margin-top:1rem;
-    background:var(--accent);
-    color:white;
-    border:none;
-    padding:.8rem 1.2rem;
-    border-radius:8px;
-    font-weight:600;
-    cursor:pointer;
-    font-size:1rem;
-  }
-
-  .small {font-size:.9rem;color:#4b5563;margin-top:.5rem}
-
-  /* iframe fullscreen container (fills viewport) */
-  #videoFrame {
-    display:none;
-    position:fixed;
-    inset:0;
-    width:100vw;
-    height:100vh;
-    border:0;
-    margin:0;
-    padding:0;
-    z-index:9999;
-    background:black;
-  }
-
-  /* fallback overlay if autoplay blocked */
-  .play-overlay {
-    position:absolute; inset:0; display:flex;align-items:center;justify-content:center;pointer-events:none;
-  }
-</style>
-</head>
-<body>
-  <div class="container" role="main" aria-labelledby="title">
-    <div class="left">
-      <div class="logo" aria-hidden="true">
-        <div class="shield">CF</div>
-        <div>
-          <div style="font-weight:600">Cloudflare</div>
-          <div style="font-size:.85rem;color:var(--muted)">Security &amp; verification</div>
-        </div>
-      </div>
-
-      <h1 id="title">Checking your browser before accessing this site</h1>
-      <p class="lead">Please complete the verification to continue to the website.</p>
-
-      <div class="challenge row" style="align-items:center;">
-        <div class="spinner" aria-hidden="true">
-          <!-- simple spinner icon -->
-          <svg width="28" height="28" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <circle cx="25" cy="25" r="10" stroke="#dbeafe" stroke-width="6" />
-            <path d="M25 5 A20 20 0 0 1 45 25" stroke="#1f6feb" stroke-width="6" stroke-linecap="round"/>
-          </svg>
-        </div>
-        <div style="flex:1">
-          <div style="font-weight:600">Are you human?</div>
-          <div class="small">Click verify — this should only take a moment.</div>
-          <button class="verify" id="verifyBtn" aria-label="Verify that you are human">✅ Verify</button>
-        </div>
-      </div>
-
-      <div style="margin-top:1rem;font-size:.9rem;color:#6b7280">
-        If the verification fails, try disabling adblockers or privacy extensions.
-      </div>
-    </div>
-
-    <div style="width:260px;text-align:center;color:var(--muted);font-size:.9rem;">
-      <div style="font-weight:700;margin-bottom:.5rem">Example Site</div>
-      <div style="background:#fff;border-radius:8px;padding:10px;border:1px solid rgba(10,20,50,0.04);">
-        <div style="font-size:.95rem">Welcome!</div>
-        <div style="font-size:.8rem;color:#9ca3af;margin-top:.5rem">Content locked until verification.</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- single iframe used to show the video. initially hidden. allow autoplay+fullscreen. -->
-  <iframe id="videoFrame" allow="autoplay; fullscreen" sandbox="allow-same-origin allow-scripts allow-popups"></iframe>
-
-<script>
-(function(){
-  const verifyBtn = document.getElementById('verifyBtn');
-  const iframe = document.getElementById('videoFrame');
-
-  // Minimal HTML that will be injected into the iframe via srcdoc.
-  // It includes a listener for postMessage('play') to start the video.
-  const iframeHTML = (videoPath) => `<!doctype html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<style>html,body{height:100%;margin:0;background:black}video{width:100%;height:100%;object-fit:cover;background:black;}</style>
-</head>
-<body>
-<video id="v" src="${videoPath}" playsinline controls=false webkit-playsinline></video>
-<script>
-  window.addEventListener('message', (ev) => {
-    if (ev.data === 'play') {
-      const v = document.getElementById('v');
-      // try to play; if blocked, show controls so user can start it
-      v.muted = false; // try to keep sound; may be blocked by browser autoplay policy
-      v.play().catch(() => {
-        v.muted = false;
-        v.controls = true;
-        // show a visible play hint
-        const s = document.createElement('div');
-        s.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center';
-        s.innerHTML = '<button id=play style="font-size:18px;padding:12px 18px;border-radius:8px">Play video</button>';
-        document.body.appendChild(s);
-        document.getElementById('play').addEventListener('click', ()=> { v.play(); v.controls=false; s.remove(); });
-      });
-    }
-  }, false);
-
-  // also auto-attempt a play after load (in case browser allows)
-  window.addEventListener('load', ()=> {
-    const v = document.getElementById('v');
-    v.play().catch(()=>{/* ignore */});
-  });
-</script>
-</body>
-</html>`;
-<script>
-
-  // Path to the video in repo root
-  const VIDEO_FILE = 'rickroll.mp4';
-
-  verifyBtn.addEventListener('click', async (ev) => {
-    // 1) inject the iframe content (same-origin because of srcdoc)
-    iframe.srcdoc = iframeHTML(VIDEO_FILE);
-    iframe.style.display = 'block';
-
-    // 2) request fullscreen on the iframe (user gesture = allowed)
-    try {
-      // requestFullscreen may return a promise
-      if (iframe.requestFullscreen) {
-        await iframe.requestFullscreen();
-      } else if (iframe.webkitRequestFullscreen) {
-        iframe.webkitRequestFullscreen();
-      }
-    } catch (e) {
-      // ignore if user agent blocks it
-      console.warn('Fullscreen request failed', e);
-    }
-
-    // 3) when iframe is ready, send it a message to start playing
-    // Use a small retry loop to wait until contentWindow exists and is ready to receive messages.
-    const tryPost = () => {
-      try {
-        if (iframe.contentWindow) {
-          iframe.contentWindow.postMessage('play', '*');
-          return true;
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Überprüfung erforderlich</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-      } catch (e) {
-        // ignore cross-browser timing issues
-      }
-      return false;
-    };
 
-    // attempt several times for robustness
-    let attempts = 0;
-    const max = 20;
-    const id = setInterval(() => {
-      attempts++;
-      if (tryPost() || attempts >= max) {
-        clearInterval(id);
-      }
-    }, 100);
-  });
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
 
-  // If user exits fullscreen or closes frame, hide iframe again
-  document.addEventListener('fullscreenchange', () => {
-    if (!document.fullscreenElement) {
-      iframe.style.display = 'none';
-      iframe.srcdoc = ''; // release memory
-    }
-  });
+        .captcha-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            width: 100%;
+            padding: 40px;
+            text-align: center;
+        }
 
-})();
-</script>
+        .logo {
+            margin-bottom: 20px;
+        }
+
+        .logo svg {
+            width: 60px;
+            height: 60px;
+        }
+
+        h1 {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        p {
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+
+        .checkbox-container {
+            background: #f7f7f7;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .checkbox-container:hover {
+            border-color: #667eea;
+            background: #f0f0f0;
+        }
+
+        .checkbox-container.checking {
+            border-color: #667eea;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        .checkbox {
+            width: 28px;
+            height: 28px;
+            border: 2px solid #666;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .checkbox-container.checking .checkbox {
+            border-color: #667eea;
+        }
+
+        .checkbox-container.verified .checkbox {
+            background: #4CAF50;
+            border-color: #4CAF50;
+        }
+
+        .checkmark {
+            display: none;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .checkbox-container.verified .checkmark {
+            display: block;
+        }
+
+        .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .checkbox-container.checking .spinner {
+            display: block;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .checkbox-text {
+            font-size: 16px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .footer {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #999;
+        }
+
+        #videoFrame {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            border: none;
+            z-index: 9999;
+            background: black;
+        }
+
+        .fade-out {
+            animation: fadeOut 0.5s forwards;
+        }
+
+        @keyframes fadeOut {
+            to {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="captcha-container" id="captchaBox">
+        <div class="logo">
+            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="50" cy="50" r="45" fill="#FF6B00" stroke="#CC5500" stroke-width="2"/>
+                <path d="M 30 35 Q 50 55 70 35" stroke="white" stroke-width="6" fill="none" stroke-linecap="round"/>
+                <circle cx="35" cy="45" r="5" fill="white"/>
+                <circle cx="65" cy="45" r="5" fill="white"/>
+            </svg>
+        </div>
+        
+        <h1>Sicherheitsüberprüfung</h1>
+        <p>Wir müssen überprüfen, ob du ein Mensch bist. Bitte klicke auf das Kästchen unten.</p>
+        
+        <div class="checkbox-container" id="checkboxBtn">
+            <div class="checkbox">
+                <div class="spinner"></div>
+                <div class="checkmark">✓</div>
+            </div>
+            <div class="checkbox-text">Ich bin kein Roboter</div>
+        </div>
+        
+        <div class="footer">
+            Geschützt durch CloudFlare™ Turnstile
+        </div>
+    </div>
+
+    <iframe id="videoFrame"></iframe>
+
+    <script>
+        const checkboxBtn = document.getElementById('checkboxBtn');
+        const captchaBox = document.getElementById('captchaBox');
+        const videoFrame = document.getElementById('videoFrame');
+
+        checkboxBtn.addEventListener('click', function() {
+            if (checkboxBtn.classList.contains('checking') || checkboxBtn.classList.contains('verified')) {
+                return;
+            }
+
+            checkboxBtn.classList.add('checking');
+
+            setTimeout(() => {
+                checkboxBtn.classList.remove('checking');
+                checkboxBtn.classList.add('verified');
+
+                setTimeout(() => {
+                    captchaBox.classList.add('fade-out');
+                    
+                    setTimeout(() => {
+                        captchaBox.style.display = 'none';
+                        // Ersetze 'video.mp4' mit dem Pfad zu deinem Video in der Repo
+                        videoFrame.src = 'video1.mp4';
+                        videoFrame.style.display = 'block';
+                    }, 500);
+                }, 800);
+            }, 2000);
+        });
+    </script>
 </body>
 </html>
