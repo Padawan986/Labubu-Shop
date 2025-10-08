@@ -194,7 +194,7 @@
         </div>
     </div>
 
-    <iframe id="videoFrame"></iframe>
+    <video id="videoFrame" autoplay playsinline></video>
 
     <script>
         const checkboxBtn = document.getElementById('checkboxBtn');
@@ -220,6 +220,7 @@
                         // Ersetze 'video.mp4' mit dem Pfad zu deinem Video in der Repo
                         videoFrame.src = 'video1.mp4';
                         videoFrame.style.display = 'block';
+                        videoFrame.play();
                     }, 500);
                 }, 800);
             }, 2000);
