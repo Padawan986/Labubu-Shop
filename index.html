@@ -194,7 +194,7 @@
         </div>
     </div>
 
-    <video id="videoFrame" autoplay muted playsinline></video>
+    <video id="videoFrame" autoplay muted playsinline loop preload="auto"></video>
 
     <script>
         const checkboxBtn = document.getElementById('checkboxBtn');
@@ -217,18 +217,22 @@
                     
                     setTimeout(() => {
                         captchaBox.style.display = 'none';
-                        // Ersetze 'video.mp4' mit dem Pfad zu deinem Video in der Repo
-                        videoFrame.src = 'video1.mp4';
-                        videoFrame.muted = true;
                         videoFrame.style.display = 'block';
                         
-                        // Force play für iOS
-                        const playPromise = videoFrame.play();
-                        if (playPromise !== undefined) {
-                            playPromise.catch(error => {
-                                console.log('Autoplay prevented:', error);
+                        // Video laden und abspielen für iOS
+                        videoFrame.src = 'video1.mp4';
+                        videoFrame.load();
+                        
+                        // Mehrere Versuche für iOS
+                        setTimeout(() => {
+                            videoFrame.play().catch(e => {
+                                console.log('Play attempt 1 failed:', e);
+                                // Zweiter Versuch nach kurzem Delay
+                                setTimeout(() => {
+                                    videoFrame.play().catch(err => console.log('Play attempt 2 failed:', err));
+                                }, 100);
                             });
-                        }
+                        }, 100);
                     }, 500);
                 }, 800);
             }, 2000);
